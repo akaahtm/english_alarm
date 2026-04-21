@@ -3,41 +3,37 @@ import feedparser
 import google.generativeai as genai
 import requests
 
-# 1. 설정 (Secrets)
+# 1. 설정
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-# 알려주신 채널 RSS
+# 사용자님의 채널 ID
 RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC6P7_696H784Y93H8E_UqgA"
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 def main():
-    print("🛠 [DEBUG] 시스템 가동 시작")
+    print("🚀 [System] 분석 프로세스 강제 시작")
     feed = feedparser.parse(RSS_URL)
     
-    if not feed.entries:
-        print("❌ [ERROR] RSS 데이터를 읽지 못했습니다.")
-        return
-
-    # 필터링 다 빼고, 가장 최신 영상 1개 강제 선택
+    # RSS에서 가장 최신 영상 무조건 선택 (날짜 필터 제거)
     video = feed.entries[0]
-    print(f"📺 [FOUND] 분석 대상: {video.title}")
+    print(f"✅ 타겟 영상 발견: {video.title}")
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"유튜브 영상({video.link}) 내용을 분석해서 영어 대화(A: B:), 한글 해석, 핵심 단어를 정리해줘."
+        # 영상의 오디오/내용을 분석하도록 요청
+        prompt = f"유튜브 영상({video.link})은 EBS 영어 방송이야. 대화문(A: B:), 해석, 단어를 마크다운으로 정리해줘."
         
-        print("🤖 [AI] 제미나이 분석 중...")
         response = model.generate_content(prompt)
         
-        print("📤 [TG] 텔레그램 전송 중...")
+        # 텔레그램 전송
         requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", 
-                      json={"chat_id": TELEGRAM_CHAT_ID, "text": response.text})
-        print("✨ [SUCCESS] 모든 작업 완료!")
+                      json={"chat_id": TELEGRAM_CHAT_ID, "text": response.text, "parse_mode": "Markdown"})
+        print("✨ 전송 완료!")
         
     except Exception as e:
-        print(f"❌ [ERROR] 에러 발생: {e}")
+        print(f"❌ 에러: {e}")
 
 if __name__ == "__main__":
     main()
